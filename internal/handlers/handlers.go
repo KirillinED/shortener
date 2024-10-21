@@ -13,6 +13,12 @@ func CreateShortLinkHandler(w http.ResponseWriter, r *http.Request) {
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	if len(body) == 0 {
+		http.Error(w, "body cannot be empty", http.StatusBadRequest)
+		return
 	}
 
 	url := utils.URL(body)
