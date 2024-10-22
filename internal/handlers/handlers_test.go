@@ -2,7 +2,9 @@ package handlers
 
 import (
 	"github.com/KirillinED/shortener/internal/storage"
+	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -77,6 +79,12 @@ func TestGetShortLinkHandler(t *testing.T) {
 	storage.LongToShortLinksMap[tkoSaratovLongLink] = tkoSaratovShortLink[1:]
 	storage.ShortToLongLinksMap[tkoSaratovShortLink[1:]] = tkoSaratovLongLink
 
+	ts := httptest.NewServer(getShortLinkHandlerRouter())
+	ts.Client().CheckRedirect = func(req *http.Request, via []*http.Request) error {
+		return http.ErrUseLastResponse
+	}
+	defer ts.Close()
+
 	tests := []struct {
 		name string
 		request
@@ -84,30 +92,39 @@ func TestGetShortLinkHandler(t *testing.T) {
 	}{
 		{
 			name:    "positive test #1",
-			request: request{method: http.MethodGet, target: yandexShortLink},
+			request: request{method: http.MethodGet, target: ts.URL + yandexShortLink},
 			want:    want{expectedStatusCode: http.StatusTemporaryRedirect, expectedHeaderLocation: yandexLongLink},
 		},
 		{
 			name:    "positive test #2",
-			request: request{method: http.MethodGet, target: tkoSaratovShortLink},
+			request: request{method: http.MethodGet, target: ts.URL + tkoSaratovShortLink},
 			want:    want{expectedStatusCode: http.StatusTemporaryRedirect, expectedHeaderLocation: tkoSaratovLongLink},
 		},
 		{
 			name:    "not found negative test",
-			request: request{method: http.MethodGet, target: "/qwerty"},
+			request: request{method: http.MethodGet, target: ts.URL + "/qwerty"},
 			want:    want{expectedStatusCode: http.StatusNotFound, expectedHeaderLocation: ""},
 		},
 	}
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			r := httptest.NewRequest(test.request.method, test.request.target, test.request.body)
-			w := httptest.NewRecorder()
+			r, err := http.NewRequest(test.request.method, test.request.target, test.request.body)
+			require.NoError(t, err)
 
-			GetShortLinkHandler(w, r)
+			resp, err := ts.Client().Do(r)
+			require.NoError(t, err)
+			defer resp.Body.Close()
 
-			assert.Equal(t, test.want.expectedStatusCode, w.Code)
-			assert.Equal(t, test.want.expectedHeaderLocation, w.Header().Get("Location"))
+			assert.Equal(t, test.want.expectedStatusCode, resp.StatusCode)
+			assert.Equal(t, test.want.expectedHeaderLocation, resp.Header.Get("Location"))
 		})
 	}
+}
+
+func getShortLinkHandlerRouter() *chi.Mux {
+	r := chi.NewRouter()
+
+	r.Get("/{link}", GetShortLinkHandler)
+	return r
 }
