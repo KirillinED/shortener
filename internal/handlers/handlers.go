@@ -3,6 +3,7 @@ package handlers
 import (
 	"github.com/KirillinED/shortener/internal/storage"
 	"github.com/KirillinED/shortener/internal/utils"
+	"github.com/go-chi/chi/v5"
 	"io"
 	"net/http"
 )
@@ -38,13 +39,13 @@ func CreateShortLinkHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func GetShortLinkHandler(w http.ResponseWriter, r *http.Request) {
-	short := r.URL.RequestURI()[1:]
+	link := chi.URLParam(r, "link")
 
-	if _, ok := storage.ShortToLongLinksMap[short]; !ok {
+	if _, ok := storage.ShortToLongLinksMap[link]; !ok {
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
 
-	w.Header().Set("Location", storage.ShortToLongLinksMap[short])
+	w.Header().Set("Location", storage.ShortToLongLinksMap[link])
 	w.WriteHeader(http.StatusTemporaryRedirect)
 }
