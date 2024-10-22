@@ -22,7 +22,7 @@ type Route struct {
 
 func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	for _, route := range r.Routes {
-		if r.ResolveRoute(route, req) {
+		if r.resolveRoute(route, req) {
 			fmt.Println(route.Method, route.Path)
 			route.Handler(w, req)
 			return
@@ -32,7 +32,7 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	http.NotFound(w, req)
 }
 
-func (r *Router) ResolveRoute(route Route, req *http.Request) bool {
+func (r *Router) resolveRoute(route Route, req *http.Request) bool {
 	if route.Method != req.Method {
 		return false
 	}
