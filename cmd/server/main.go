@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/KirillinED/shortener/internal/config"
 	"github.com/KirillinED/shortener/internal/handlers"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -10,6 +11,14 @@ import (
 )
 
 func main() {
+	if err := run(); err != nil {
+		panic(err)
+	}
+}
+
+func run() error {
+	cfg := config.GetConfig()
+
 	r := chi.NewRouter()
 	r.Use(middleware.RealIP)
 	r.Use(middleware.Logger)
@@ -20,6 +29,6 @@ func main() {
 
 	r.Get("/{link}", handlers.GetShortLinkHandler)
 
-	fmt.Println("Listening on port 8080")
-	panic(http.ListenAndServe(":8080", r))
+	fmt.Println("Listening on " + cfg.Address.String())
+	return http.ListenAndServe(cfg.Address.String(), r)
 }

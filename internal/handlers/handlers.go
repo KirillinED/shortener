@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"github.com/KirillinED/shortener/internal/config"
 	"github.com/KirillinED/shortener/internal/storage"
 	"github.com/KirillinED/shortener/internal/utils"
 	"github.com/go-chi/chi/v5"
@@ -8,7 +9,9 @@ import (
 	"net/http"
 )
 
-const Domain = "http://localhost:8080/"
+type Map struct {
+	arr []any
+}
 
 func CreateShortLinkHandler(w http.ResponseWriter, r *http.Request) {
 	body, err := io.ReadAll(r.Body)
@@ -32,7 +35,7 @@ func CreateShortLinkHandler(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "text/plain")
 	w.WriteHeader(http.StatusCreated)
-	_, err = w.Write([]byte(Domain + storage.LongToShortLinksMap[url.String()]))
+	_, err = w.Write([]byte(config.GetConfig().BaseURL + storage.LongToShortLinksMap[url.String()]))
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
