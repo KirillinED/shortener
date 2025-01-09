@@ -8,12 +8,12 @@ import (
 
 const (
 	DefaultHost = "localhost"
-	DefaultPort = 8080
+	DefaultPort = 80
 )
 
 type config struct {
 	Address
-	BaseURL string
+	BaseURL string `env:"APP_BASE_URL"`
 }
 
 var cfg *config
@@ -31,7 +31,7 @@ func GetConfig() *config {
 func (c *config) Init() {
 	SetDefault(c)
 	ParseFlags(c)
-	// ParseEnv(c)
+	ParseEnv(c)
 }
 
 func SetDefault(c *config) {
@@ -42,8 +42,8 @@ func SetDefault(c *config) {
 }
 
 type Address struct {
-	Host string
-	Port int
+	Host string `env:"APP_HOST"`
+	Port int    `env:"APP_PORT"`
 }
 
 func (a *Address) String() string {
