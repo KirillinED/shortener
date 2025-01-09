@@ -4,14 +4,8 @@ import (
 	"hash/crc32"
 )
 
-type URL string
-
-func (u URL) String() string {
-	return string(u)
-}
-
-func (u URL) Short() string {
-	hash := crc32.ChecksumIEEE([]byte(u.String()))
+func ShortURL(url string) string {
+	hash := crc32.ChecksumIEEE([]byte(url))
 
 	return Base62Encode(hash)
 }
