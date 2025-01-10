@@ -16,11 +16,9 @@ type config struct {
 	BaseURL string `env:"APP_BASE_URL"`
 }
 
-var cfg *config
+var cfg = new(config)
 
 func init() {
-	cfg = new(config)
-
 	cfg.Init()
 }
 

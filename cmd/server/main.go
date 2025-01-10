@@ -25,7 +25,7 @@ func run() error {
 	r.Use(middleware.Recoverer)
 	r.Use(middleware.Timeout(60 * time.Second))
 
-	r.Post("/", handlers.CreateShortLinkHandler)
+	r.Post("/api/shorten", handlers.CreateShortLinkHandler)
 
 	r.Get("/{link}", handlers.GetShortLinkHandler)
 

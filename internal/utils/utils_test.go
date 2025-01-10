@@ -5,37 +5,40 @@ import (
 	"testing"
 )
 
-func TestURL_Short(t *testing.T) {
+func TestShortURL(t *testing.T) {
+	type args struct {
+		url string
+	}
+
 	tests := []struct {
 		name string
-		url  URL
+		args args
 		want string
 	}{
 		{
 			name: "positive test #1",
-			url:  URL("https://www.example.com"),
+			args: args{url: "https://www.example.com"},
 			want: "61xc1",
 		},
 		{
 			name: "positive test #2",
-			url:  URL("https://practicum.yandex.ru/"),
+			args: args{url: "https://practicum.yandex.ru/"},
 			want: "2IYdFP",
 		},
 		{
 			name: "zero value",
-			url:  URL(""),
+			args: args{url: ""},
 			want: "",
 		},
 		{
 			name: "big value",
-			url:  URL("https://vladimir-tko.etton.ru/terSchema/?year=2024&flows=true&zoom=8&center=55.96608422809726,41.59973144531251&layers=gs,trade,transport-infrastructure,educational,household,catering,culture,admin_building,other,no_type,construction,set,uk,apartmentBuildings,ind"),
+			args: args{url: "https://vladimir-tko.etton.ru/terSchema/?year=2024&flows=true&zoom=8&center=55.96608422809726,41.59973144531251&layers=gs,trade,transport-infrastructure,educational,household,catering,culture,admin_building,other,no_type,construction,set,uk,apartmentBuildings,ind"},
 			want: "3gIQrJ",
 		},
 	}
-
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			assert.Equal(t, test.want, test.url.Short())
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equalf(t, tt.want, ShortURL(tt.args.url), "ShortURL(%v)", tt.args.url)
 		})
 	}
 }
