@@ -1,6 +1,8 @@
 package handlers
 
 import (
+	"fmt"
+	"github.com/KirillinED/shortener/internal/config"
 	"github.com/KirillinED/shortener/internal/storage"
 	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/assert"
@@ -24,6 +26,8 @@ func TestCreateShortLinkHandler(t *testing.T) {
 		expectedBody       string
 	}
 
+	baseUrl := config.GetConfig().BaseURL
+
 	tests := []struct {
 		name string
 		request
@@ -31,13 +35,13 @@ func TestCreateShortLinkHandler(t *testing.T) {
 	}{
 		{
 			name:    "positive test #1",
-			request: request{method: http.MethodPost, target: "/", body: strings.NewReader("https://google.com")},
-			want:    want{expectedStatusCode: http.StatusCreated, expectedBody: "http://localhost:8080/1Frbb7"},
+			request: request{method: http.MethodPost, target: "/", body: strings.NewReader(`{"url":"https://google.com"}`)},
+			want:    want{expectedStatusCode: http.StatusCreated, expectedBody: fmt.Sprintf(`{"result":"%s/1Frbb7"}`, baseUrl[:len(baseUrl)-1])},
 		},
 		{
 			name:    "long value positive test #2",
-			request: request{method: http.MethodPost, target: "/", body: strings.NewReader("https://vladimir-tko.etton.ru/terSchema/?year=2024&flows=true&zoom=8&center=55.96608422809726,41.59973144531251&layers=gs,trade,transport-infrastructure,educational,household,catering,culture,admin_building,other,no_type,construction,set,uk,apartmentBuildings,ind")},
-			want:    want{expectedStatusCode: http.StatusCreated, expectedBody: "http://localhost:8080/3gIQrJ"},
+			request: request{method: http.MethodPost, target: "/", body: strings.NewReader(`{"url":"https://example.com/terSchema/?year=2024&flows=true&zoom=8&center=55.96608422809726,41.59973144531251&layers=gs,trade,transport-infrastructure,educational,household,catering,culture,admin_building,other,no_type,construction,set,uk,apartmentBuildings,ind"}`)},
+			want:    want{expectedStatusCode: http.StatusCreated, expectedBody: fmt.Sprintf(`{"result":"%s/3LyLZS"}`, baseUrl[:len(baseUrl)-1])},
 		},
 		{
 			name:    "zero body negative test #3",
@@ -69,15 +73,15 @@ func TestGetShortLinkHandler(t *testing.T) {
 		yandexLongLink  = "https://yandex.ru/"
 		yandexShortLink = "/43BydK"
 
-		tkoSaratovLongLink  = "https://saratov-tko.etton.ru/terSchema/?year=2024&flows=true&zoom=8&center=55.96608422809726,41.59973144531251&layers=gs,trade,transport-infrastructure,educational,household,catering,culture,admin_building,other,no_type,construction,set,uk,apartmentBuildings,ind"
-		tkoSaratovShortLink = "/9qeVj"
+		exampleLongLink  = "https://example.com/terSchema/?year=2024&flows=true&zoom=8&center=55.96608422809726,41.59973144531251&layers=gs,trade,transport-infrastructure,educational,household,catering,culture,admin_building,other,no_type,construction,set,uk,apartmentBuildings,ind"
+		exampleShortLink = "/3LyLZS"
 	)
 
 	storage.LongToShortLinksMap[yandexLongLink] = yandexShortLink[1:]
 	storage.ShortToLongLinksMap[yandexShortLink[1:]] = yandexLongLink
 
-	storage.LongToShortLinksMap[tkoSaratovLongLink] = tkoSaratovShortLink[1:]
-	storage.ShortToLongLinksMap[tkoSaratovShortLink[1:]] = tkoSaratovLongLink
+	storage.LongToShortLinksMap[exampleLongLink] = exampleShortLink[1:]
+	storage.ShortToLongLinksMap[exampleShortLink[1:]] = exampleLongLink
 
 	ts := httptest.NewServer(getShortLinkHandlerRouter())
 	ts.Client().CheckRedirect = func(req *http.Request, via []*http.Request) error {
@@ -97,8 +101,8 @@ func TestGetShortLinkHandler(t *testing.T) {
 		},
 		{
 			name:    "positive test #2",
-			request: request{method: http.MethodGet, target: ts.URL + tkoSaratovShortLink},
-			want:    want{expectedStatusCode: http.StatusTemporaryRedirect, expectedHeaderLocation: tkoSaratovLongLink},
+			request: request{method: http.MethodGet, target: ts.URL + exampleShortLink},
+			want:    want{expectedStatusCode: http.StatusTemporaryRedirect, expectedHeaderLocation: exampleLongLink},
 		},
 		{
 			name:    "not found negative test",
@@ -114,7 +118,7 @@ func TestGetShortLinkHandler(t *testing.T) {
 
 			resp, err := ts.Client().Do(r)
 			require.NoError(t, err)
-			defer resp.Body.Close()
+			require.NoError(t, resp.Body.Close())
 
 			assert.Equal(t, test.want.expectedStatusCode, resp.StatusCode)
 			assert.Equal(t, test.want.expectedHeaderLocation, resp.Header.Get("Location"))
@@ -125,6 +129,6 @@ func TestGetShortLinkHandler(t *testing.T) {
 func getShortLinkHandlerRouter() *chi.Mux {
 	r := chi.NewRouter()
 
-	r.Get("/{link}", GetShortLinkHandler)
+	r.Get("/api/shorten", GetShortLinkHandler)
 	return r
 }

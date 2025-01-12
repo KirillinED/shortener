@@ -51,6 +51,7 @@ func run() error {
 	r := chi.NewRouter()
 	r.Use(
 		middlewares.Logger(logger),
+		middlewares.Compress,
 		middleware.RealIP,
 		middleware.Recoverer,
 		middleware.Timeout(60*time.Second))
