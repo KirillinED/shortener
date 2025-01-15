@@ -10,10 +10,6 @@ import (
 	"net/http"
 )
 
-type Map struct {
-	arr []any
-}
-
 func CreateShortLinkHandler(w http.ResponseWriter, r *http.Request) {
 	type CreateShortLinkRequestBody struct {
 		URL string `json:"url"`

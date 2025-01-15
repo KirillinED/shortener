@@ -14,15 +14,17 @@ const (
 type config struct {
 	Address
 	BaseURL string `env:"APP_BASE_URL"`
+	booted  bool
 }
 
 var cfg = new(config)
 
-func init() {
-	cfg.Init()
-}
-
 func GetConfig() *config {
+	if !cfg.booted {
+		cfg.Init()
+		cfg.booted = true
+	}
+
 	return cfg
 }
 
