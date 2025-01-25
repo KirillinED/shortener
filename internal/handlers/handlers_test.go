@@ -2,8 +2,8 @@ package handlers
 
 import (
 	"fmt"
-	"github.com/KirillinED/shortener/internal/config"
-	"github.com/KirillinED/shortener/internal/storage"
+	"github.com/KirillinED/shortener/internal/dto"
+	"github.com/KirillinED/shortener/internal/foundation"
 	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -21,12 +21,15 @@ type request struct {
 }
 
 func TestCreateShortLinkHandler(t *testing.T) {
+	app := foundation.NewAppStub()
+	defer app.Shutdown()
+
 	type want struct {
 		expectedStatusCode int
 		expectedBody       string
 	}
 
-	baseUrl := config.GetConfig().BaseURL
+	baseUrl := app.GetConfig().BaseURL
 
 	tests := []struct {
 		name string
@@ -55,7 +58,7 @@ func TestCreateShortLinkHandler(t *testing.T) {
 			req := httptest.NewRequest(test.method, test.target, test.body)
 			w := httptest.NewRecorder()
 
-			CreateShortLinkHandler(w, req)
+			CreateShortLinkHandler(app)(w, req)
 
 			assert.Equal(t, test.want.expectedStatusCode, w.Code)
 			assert.Equal(t, test.want.expectedBody, w.Body.String())
@@ -64,26 +67,31 @@ func TestCreateShortLinkHandler(t *testing.T) {
 }
 
 func TestGetShortLinkHandler(t *testing.T) {
+	app := foundation.NewAppStub()
+	defer app.Shutdown()
+
 	type want struct {
 		expectedStatusCode     int
 		expectedHeaderLocation string
 	}
 
-	const (
-		yandexLongLink  = "https://yandex.ru/"
-		yandexShortLink = "/43BydK"
+	links := []dto.Link{
+		{
+			Long:  "https://yandex.ru/",
+			Short: "43BydK",
+		},
+		{
+			Long:  "https://example.com/terSchema/?year=2024&flows=true&zoom=8&center=55.96608422809726,41.59973144531251&layers=gs,trade,transport-infrastructure,educational,household,catering,culture,admin_building,other,no_type,construction,set,uk,apartmentBuildings,ind",
+			Short: "3LyLZS",
+		},
+	}
 
-		exampleLongLink  = "https://example.com/terSchema/?year=2024&flows=true&zoom=8&center=55.96608422809726,41.59973144531251&layers=gs,trade,transport-infrastructure,educational,household,catering,culture,admin_building,other,no_type,construction,set,uk,apartmentBuildings,ind"
-		exampleShortLink = "/3LyLZS"
-	)
+	for _, link := range links {
+		err := app.MemoryStorage.StoreLink(link)
+		require.NoError(t, err)
+	}
 
-	storage.LongToShortLinksMap[yandexLongLink] = yandexShortLink[1:]
-	storage.ShortToLongLinksMap[yandexShortLink[1:]] = yandexLongLink
-
-	storage.LongToShortLinksMap[exampleLongLink] = exampleShortLink[1:]
-	storage.ShortToLongLinksMap[exampleShortLink[1:]] = exampleLongLink
-
-	ts := httptest.NewServer(getShortLinkHandlerRouter())
+	ts := httptest.NewServer(getShortLinkHandlerRouter(app))
 	ts.Client().CheckRedirect = func(req *http.Request, via []*http.Request) error {
 		return http.ErrUseLastResponse
 	}
@@ -96,13 +104,13 @@ func TestGetShortLinkHandler(t *testing.T) {
 	}{
 		{
 			name:    "positive test #1",
-			request: request{method: http.MethodGet, target: ts.URL + yandexShortLink},
-			want:    want{expectedStatusCode: http.StatusTemporaryRedirect, expectedHeaderLocation: yandexLongLink},
+			request: request{method: http.MethodGet, target: ts.URL + "/" + links[0].Short},
+			want:    want{expectedStatusCode: http.StatusTemporaryRedirect, expectedHeaderLocation: links[0].Long},
 		},
 		{
 			name:    "positive test #2",
-			request: request{method: http.MethodGet, target: ts.URL + exampleShortLink},
-			want:    want{expectedStatusCode: http.StatusTemporaryRedirect, expectedHeaderLocation: exampleLongLink},
+			request: request{method: http.MethodGet, target: ts.URL + "/" + links[1].Short},
+			want:    want{expectedStatusCode: http.StatusTemporaryRedirect, expectedHeaderLocation: links[1].Long},
 		},
 		{
 			name:    "not found negative test",
@@ -126,9 +134,9 @@ func TestGetShortLinkHandler(t *testing.T) {
 	}
 }
 
-func getShortLinkHandlerRouter() *chi.Mux {
+func getShortLinkHandlerRouter(app foundation.Application) *chi.Mux {
 	r := chi.NewRouter()
 
-	r.Get("/api/shorten", GetShortLinkHandler)
+	r.Get("/{link}", GetShortLinkHandler(app))
 	return r
 }
