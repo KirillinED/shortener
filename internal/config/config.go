@@ -7,38 +7,44 @@ import (
 )
 
 const (
-	DefaultHost = "localhost"
-	DefaultPort = 80
+	DefaultHost            = "localhost"
+	DefaultPort            = 80
+	DefaultFileStoragePath = "/tmp/short-url-db.json"
 )
 
-type config struct {
+type Config struct {
 	Address
-	BaseURL string `env:"APP_BASE_URL"`
-	booted  bool
+	BaseURL         string `env:"APP_BASE_URL"`
+	FileStoragePath string `env:"FILE_STORAGE_PATH"`
 }
 
-var cfg = new(config)
+func NewConfig() *Config {
+	cfg := &Config{}
 
-func GetConfig() *config {
-	if !cfg.booted {
-		cfg.Init()
-		cfg.booted = true
-	}
+	cfg.Init()
 
 	return cfg
 }
 
-func (c *config) Init() {
-	SetDefault(c)
+func DefaultConfig() *Config {
+	cfg := &Config{}
+
+	SetDefault(cfg)
+
+	return cfg
+}
+
+func (c *Config) Init() {
 	ParseFlags(c)
 	ParseEnv(c)
 }
 
-func SetDefault(c *config) {
+func SetDefault(c *Config) {
 	c.Address = Address{}
 	c.Address.Host = DefaultHost
 	c.Address.Port = DefaultPort
-	c.BaseURL = "http://" + DefaultHost + ":" + strconv.Itoa(DefaultPort) + "/"
+	c.BaseURL = "http://" + c.Address.Host + ":" + strconv.Itoa(c.Address.Port) + "/"
+	c.FileStoragePath = DefaultFileStoragePath
 }
 
 type Address struct {

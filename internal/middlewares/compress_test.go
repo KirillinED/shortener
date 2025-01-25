@@ -5,7 +5,7 @@ import (
 	"compress/flate"
 	"compress/gzip"
 	"fmt"
-	"github.com/KirillinED/shortener/internal/config"
+	"github.com/KirillinED/shortener/internal/foundation"
 	"github.com/KirillinED/shortener/internal/handlers"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -96,7 +96,9 @@ func TestNewCompressReader(t *testing.T) {
 }
 
 func TestCompressMiddleware(t *testing.T) {
-	baseUrl := config.GetConfig().BaseURL
+	app := foundation.NewApp()
+
+	baseUrl := app.Cfg.BaseURL
 
 	var requestBody = `{"url":"https://example.com/?&africa=alert&energy=unaccountable&opportunist=amused&canteen=hard&standoff=Early&neon=melodic&crew=periodic&height=boiling&stallion=frail&pendulum=many&century=hellish&cork=classy&button=exuberant&dory=goofy&atrium=defiant&niece=yellow&clock=fragile&learning=illegal&lye=kindhearted&development=obnoxious&pie=idiotic&curio=loud&magician=fearless&whorl=majestic&ghost=amuck&clutch=penitent&straw=soggy&detention=foamy&footstool=sulky&character=knowledgeable&motorcar=angry&cloister=steadfast&switchboard=jobless&smell=smoggy&euphonium=curious&parrot=accurate&presence=enchanting&pounding=rabid&snob=cute&tote=real&february=sparkling&eyebrow=jittery&tuesday=majestic&strip=courageous&dryer=loutish&heat=evil&senator=panoramic&crystallography=torpid&guide=quick&bun=guiltless&prose=adventurous&caution=chubby&feet=weary&vertigo=joyous&amusement=gaudy&creative=ad hoc&specific=frantic&expansion=wacky&tie=swift&complex=womanly&enemy=ambiguous&marimba=misty&zither=sore&orange=afraid&lyric=melted&glen=discreet&triangle=nauseating&slime=ripe&carol=belligerent&personality=parsimonious&tripod=cloistered&jennifer=imported&fascia=dusty&comb=burly&boar=fretful&spring=sad&lead=wandering&flood=finicky&chance=lewd&swimming=makeshift&premier=drunk&forum=mindless&mattock=obscene&pitching=jumbled&establishment=oceanic&final=lucky&craw=apathetic&laptop=symptomatic&digital=wicked&stop=boundless&hippopotamus=vacuous&sprout=kindhearted&cabin=idiotic&ruffle=skinny&pupil=clean&freeplay=tightfisted&banana=unequaled&baboon=aberrant&fir=exotic&reflection=ill&lotion=calm&series=fresh&meet=used&wednesday=tasteless&forum=gruesome&himalayan=greedy&loan=stimulating&planter=silky&average=changeable&sushi=sloppy&inside=lowly&ripple=tiresome&solitaire=muddled&belly=offbeat&spectacles=sleepy&workbench=giddy&pizza=sore&summer=capricious&latency=jittery&faucet=frantic&pickax=dashing&sarong=selective&concert=spiritual&coevolution=sneaky&notebook=wanting&breast=uneven&synergy=magenta"}`
 	var responseBody = fmt.Sprintf(`{"result":"%s/32DOl6"}`, baseUrl[:len(baseUrl)-1])
@@ -198,7 +200,7 @@ func TestCompressMiddleware(t *testing.T) {
 				request.Body = &TestReadCloser{r: rr.Body}
 			}
 
-			handler := Compress(http.HandlerFunc(handlers.CreateShortLinkHandler))
+			handler := Compress(http.HandlerFunc(handlers.CreateShortLinkHandler(app)))
 			handler.ServeHTTP(response, request)
 
 			// Если ответ закодирован, то раскодируем для проверки

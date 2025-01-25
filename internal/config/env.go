@@ -6,7 +6,7 @@ import (
 	"log"
 )
 
-func ParseEnv(c *config) {
+func ParseEnv(c *Config) {
 	err := godotenv.Load()
 	if err != nil {
 		log.Fatal("Error loading .env file")
