@@ -2,6 +2,7 @@ package storage
 
 import (
 	"errors"
+	"github.com/KirillinED/shortener/internal/config"
 	"github.com/KirillinED/shortener/internal/dto"
 	"io"
 )
@@ -12,53 +13,60 @@ type MemoryStorage struct {
 	LongToShortLinksMap map[string]string
 }
 
-func NewMemoryStorage(fs *FileStorage) *MemoryStorage {
-	return &MemoryStorage{
-		FileStorage:         fs,
+func NewMemoryStorage(cfg *config.Config) (*MemoryStorage, error) {
+	memStore := &MemoryStorage{
+		FileStorage:         NewFileStorage(cfg.FileStoragePath),
 		ShortToLongLinksMap: make(map[string]string),
 		LongToShortLinksMap: make(map[string]string),
 	}
+
+	err := memStore.Recovering()
+	if err != nil {
+		return nil, err
+	}
+
+	return memStore, nil
 }
 
-func (ms *MemoryStorage) ShortExists(shortURL string) bool {
+func (ms *MemoryStorage) ShortExists(shortURL string) (bool, error) {
 	_, ok := ms.ShortToLongLinksMap[shortURL]
 
-	return ok
+	return ok, nil
 }
 
-func (ms *MemoryStorage) LongExists(longURL string) bool {
+func (ms *MemoryStorage) LongExists(longURL string) (bool, error) {
 	_, ok := ms.LongToShortLinksMap[longURL]
 
-	return ok
+	return ok, nil
 }
 
-func (ms *MemoryStorage) GetShortURL(longURL string) string {
-	if ms.LongExists(longURL) {
-		return ms.LongToShortLinksMap[longURL]
+func (ms *MemoryStorage) GetShortURL(longURL string) (string, error) {
+	if ok, _ := ms.LongExists(longURL); ok {
+		return ms.LongToShortLinksMap[longURL], nil
 	}
 
-	return ""
+	return "", nil
 }
 
-func (ms *MemoryStorage) GetLongURL(shortURL string) string {
-	if ms.ShortExists(shortURL) {
-		return ms.ShortToLongLinksMap[shortURL]
+func (ms *MemoryStorage) GetLongURL(shortURL string) (string, error) {
+	if ok, _ := ms.ShortExists(shortURL); ok {
+		return ms.ShortToLongLinksMap[shortURL], nil
 	}
 
-	return ""
+	return "", nil
 }
 
-func (ms *MemoryStorage) StoreLink(link dto.Link) error {
+func (ms *MemoryStorage) StoreLink(link dto.Link) (bool, error) {
 	err := ms.FileStorage.encoder.Encode(link)
 	if err != nil {
-		return err
+		return false, err
 	}
 
 	ms.ShortToLongLinksMap[link.Short] = link.Long
 
 	ms.LongToShortLinksMap[link.Long] = link.Short
 
-	return nil
+	return true, nil
 }
 
 func (ms *MemoryStorage) Close() error {
@@ -80,7 +88,7 @@ func (ms *MemoryStorage) Recovering() error {
 			return err
 		}
 
-		err = ms.StoreLink(*link)
+		_, err = ms.StoreLink(*link)
 		if err != nil {
 			return err
 		}
