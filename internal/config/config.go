@@ -16,6 +16,8 @@ type Config struct {
 	Address
 	BaseURL         string `env:"APP_BASE_URL"`
 	FileStoragePath string `env:"FILE_STORAGE_PATH"`
+	DatabaseDSN     string `env:"DATABASE_DSN"`
+	DatabaseDriver  string `env:"DATABASE_DRIVER"`
 }
 
 func NewConfig() *Config {

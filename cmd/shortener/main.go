@@ -35,6 +35,10 @@ func run(app *foundation.App) error {
 		middleware.Recoverer,
 		middleware.Timeout(60*time.Second))
 
+	r.Get("/healthcheck", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	})
+
 	r.Post("/api/shorten", handlers.CreateShortLinkHandler(app))
 
 	r.Get("/{link}", handlers.GetShortLinkHandler(app))

@@ -2,9 +2,13 @@ package handlers
 
 import (
 	"fmt"
+	"github.com/KirillinED/shortener/internal/config"
 	"github.com/KirillinED/shortener/internal/dto"
 	"github.com/KirillinED/shortener/internal/foundation"
+	foundation2 "github.com/KirillinED/shortener/internal/mocks/foundation"
+	"github.com/KirillinED/shortener/internal/storage"
 	"github.com/go-chi/chi/v5"
+	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"io"
@@ -21,7 +25,29 @@ type request struct {
 }
 
 func TestCreateShortLinkHandler(t *testing.T) {
-	app := foundation.NewAppStub()
+	ctrl := gomock.NewController(t)
+
+	app := foundation2.NewMockApplication(ctrl)
+	app.
+		EXPECT().
+		GetConfig().
+		Return(config.DefaultConfig()).
+		AnyTimes()
+
+	memStore, err := storage.NewMemoryStorage(app.GetConfig())
+	require.NoError(t, err)
+
+	app.
+		EXPECT().
+		GetStorage().
+		Return(memStore).
+		AnyTimes()
+
+	app.EXPECT().
+		Shutdown().
+		Do(func() {
+			app.GetStorage().Close()
+		})
 	defer app.Shutdown()
 
 	type want struct {
@@ -67,7 +93,29 @@ func TestCreateShortLinkHandler(t *testing.T) {
 }
 
 func TestGetShortLinkHandler(t *testing.T) {
-	app := foundation.NewAppStub()
+	ctrl := gomock.NewController(t)
+
+	app := foundation2.NewMockApplication(ctrl)
+	app.
+		EXPECT().
+		GetConfig().
+		Return(config.DefaultConfig()).
+		AnyTimes()
+
+	memStore, err := storage.NewMemoryStorage(app.GetConfig())
+	require.NoError(t, err)
+
+	app.
+		EXPECT().
+		GetStorage().
+		Return(memStore).
+		AnyTimes()
+
+	app.EXPECT().
+		Shutdown().
+		Do(func() {
+			app.GetStorage().Close()
+		})
 	defer app.Shutdown()
 
 	type want struct {
@@ -87,7 +135,7 @@ func TestGetShortLinkHandler(t *testing.T) {
 	}
 
 	for _, link := range links {
-		err := app.MemoryStorage.StoreLink(link)
+		_, err := app.GetStorage().StoreLink(link)
 		require.NoError(t, err)
 	}
 

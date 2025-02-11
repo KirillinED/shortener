@@ -44,14 +44,6 @@ func (f *FileStorage) Close() error {
 	return f.file.Close()
 }
 
-//func (f *FileStorage) Scan() bool {
-//	return f.scanner.Scan()
-//}
-//
-//func (f *FileStorage) Bytes() []byte {
-//	return f.scanner.Bytes()
-//}
-
 func (f *FileStorage) ReadLink() (*dto.Link, error) {
 	link := &dto.Link{}
 	err := f.decoder.Decode(link)

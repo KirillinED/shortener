@@ -36,20 +36,33 @@ func CreateShortLinkHandler(app foundation.Application) func(http.ResponseWriter
 			http.Error(w, err.Error(), http.StatusBadRequest)
 		}
 
-		if !app.GetMemoryStorage().ShortExists(requestBody.URL) {
-			err = app.GetMemoryStorage().StoreLink(dto.Link{
-				Short: utils.ShortURL(requestBody.URL),
+		ok, err := app.GetStorage().ShortExists(requestBody.URL)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+		}
+
+		var shortUrl string
+		if ok {
+			shortUrl, err = app.GetStorage().GetShortURL(requestBody.URL)
+		} else {
+			shortUrl = utils.ShortURL(requestBody.URL)
+			ok, err = app.GetStorage().StoreLink(dto.Link{
+				Short: shortUrl,
 				Long:  requestBody.URL,
 			})
-			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
+
+			if !ok {
+				http.Error(w, "Something went wrong. Link is not save.", http.StatusInternalServerError)
 			}
+		}
+
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusCreated)
-
-		response := CreateShortLinkResponse{Result: app.GetConfig().BaseURL + app.GetMemoryStorage().GetShortURL(requestBody.URL)}
+		response := CreateShortLinkResponse{Result: app.GetConfig().BaseURL + shortUrl}
 
 		res, err := json.Marshal(response)
 		if err != nil {
@@ -67,12 +80,22 @@ func GetShortLinkHandler(app foundation.Application) func(http.ResponseWriter, *
 	return func(w http.ResponseWriter, r *http.Request) {
 		link := chi.URLParam(r, "link")
 
-		if !app.GetMemoryStorage().ShortExists(link) {
+		ok, err := app.GetStorage().ShortExists(link)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+
+		if !ok {
 			w.WriteHeader(http.StatusNotFound)
 			return
 		}
 
-		w.Header().Set("Location", app.GetMemoryStorage().GetLongURL(link))
+		url, err := app.GetStorage().GetLongURL(link)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+
+		w.Header().Set("Location", url)
 		w.WriteHeader(http.StatusTemporaryRedirect)
 	}
 }
