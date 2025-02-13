@@ -2,100 +2,90 @@ package handlers
 
 import (
 	"encoding/json"
-	"github.com/KirillinED/shortener/internal/dto"
+	"errors"
 	"github.com/KirillinED/shortener/internal/foundation"
-	"github.com/KirillinED/shortener/internal/utils"
+	storageErrors "github.com/KirillinED/shortener/internal/storage/errors"
 	"github.com/go-chi/chi/v5"
-	"io"
 	"net/http"
 )
 
 func CreateShortLinkHandler(app foundation.Application) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
-		type CreateShortLinkRequestBody struct {
+		var req struct {
 			URL string `json:"url"`
 		}
 
-		type CreateShortLinkResponse struct {
-			Result string `json:"result"`
-		}
-
-		body, err := io.ReadAll(r.Body)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
 
-		if len(body) == 0 {
-			http.Error(w, "body cannot be empty", http.StatusBadRequest)
-			return
-		}
-
-		requestBody := CreateShortLinkRequestBody{}
-		if err = json.Unmarshal(body, &requestBody); err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-		}
-
-		ok, err := app.GetStorage().ShortExists(requestBody.URL)
+		shortUrl, err := app.GetShortenerService().CreateShortLink(req.URL)
+		statusCode := http.StatusCreated
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-		}
-
-		var shortUrl string
-		if ok {
-			shortUrl, err = app.GetStorage().GetShortURL(requestBody.URL)
-		} else {
-			shortUrl = utils.ShortURL(requestBody.URL)
-			ok, err = app.GetStorage().StoreLink(dto.Link{
-				Short: shortUrl,
-				Long:  requestBody.URL,
-			})
-
-			if !ok {
+			if errors.Is(err, &storageErrors.DuplicateError{}) {
+				statusCode = http.StatusConflict
+			} else {
 				http.Error(w, "Something went wrong. Link is not save.", http.StatusInternalServerError)
+				return
 			}
 		}
 
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-		}
-
 		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusCreated)
-		response := CreateShortLinkResponse{Result: app.GetConfig().BaseURL + shortUrl}
-
-		res, err := json.Marshal(response)
+		w.WriteHeader(statusCode)
+		err = json.NewEncoder(w).Encode(map[string]string{"result": shortUrl})
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-		}
-
-		_, err = w.Write(res)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			app.GetLogger().Error("response encode error: " + err.Error())
 		}
 	}
 }
 
 func GetShortLinkHandler(app foundation.Application) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
-		link := chi.URLParam(r, "link")
-
-		ok, err := app.GetStorage().ShortExists(link)
+		url, err := app.GetShortenerService().GetLongLink(chi.URLParam(r, "link"))
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-		}
+			if errors.Is(err, &storageErrors.NotFoundError{}) {
+				http.Error(w, err.Error(), http.StatusNotFound)
+				return
+			}
 
-		if !ok {
-			w.WriteHeader(http.StatusNotFound)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
-		}
-
-		url, err := app.GetStorage().GetLongURL(link)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
 
 		w.Header().Set("Location", url)
 		w.WriteHeader(http.StatusTemporaryRedirect)
+	}
+}
+
+func BatchCreateLinksHandler(app foundation.Application) func(http.ResponseWriter, *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		req := make([]struct {
+			CorrelationID string `json:"correlation_id"`
+			OriginalURL   string `json:"original_url"`
+		}, 0)
+
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		statusCode := http.StatusCreated
+		links, err := app.GetShortenerService().CreateShortLinks(req)
+		if err != nil {
+			if !errors.Is(err, &storageErrors.DuplicateError{}) {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+
+			statusCode = http.StatusConflict
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(statusCode)
+		err = json.NewEncoder(w).Encode(links)
+		if err != nil {
+			app.GetLogger().Error("response encode error: " + err.Error())
+		}
 	}
 }

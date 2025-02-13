@@ -4,6 +4,7 @@ import (
 	"errors"
 	"github.com/KirillinED/shortener/internal/config"
 	"github.com/KirillinED/shortener/internal/dto"
+	storageErrors "github.com/KirillinED/shortener/internal/storage/errors"
 	"io"
 )
 
@@ -28,20 +29,20 @@ func NewMemoryStorage(cfg *config.Config) (*MemoryStorage, error) {
 	return memStore, nil
 }
 
-func (ms *MemoryStorage) ShortExists(shortURL string) (bool, error) {
+func (ms *MemoryStorage) shortExists(shortURL string) (bool, error) {
 	_, ok := ms.ShortToLongLinksMap[shortURL]
 
 	return ok, nil
 }
 
-func (ms *MemoryStorage) LongExists(longURL string) (bool, error) {
+func (ms *MemoryStorage) longExists(longURL string) (bool, error) {
 	_, ok := ms.LongToShortLinksMap[longURL]
 
 	return ok, nil
 }
 
 func (ms *MemoryStorage) GetShortURL(longURL string) (string, error) {
-	if ok, _ := ms.LongExists(longURL); ok {
+	if ok, _ := ms.longExists(longURL); ok {
 		return ms.LongToShortLinksMap[longURL], nil
 	}
 
@@ -49,24 +50,48 @@ func (ms *MemoryStorage) GetShortURL(longURL string) (string, error) {
 }
 
 func (ms *MemoryStorage) GetLongURL(shortURL string) (string, error) {
-	if ok, _ := ms.ShortExists(shortURL); ok {
+	if ok, _ := ms.shortExists(shortURL); ok {
 		return ms.ShortToLongLinksMap[shortURL], nil
 	}
 
 	return "", nil
 }
 
-func (ms *MemoryStorage) StoreLink(link dto.Link) (bool, error) {
+func (ms *MemoryStorage) StoreLink(link dto.Link) error {
+	if _, ok := ms.ShortToLongLinksMap[link.Short]; ok {
+		return &storageErrors.DuplicateError{}
+	}
+
+	if _, ok := ms.LongToShortLinksMap[link.Long]; ok {
+		return &storageErrors.DuplicateError{}
+	}
+
 	err := ms.FileStorage.encoder.Encode(link)
 	if err != nil {
-		return false, err
+		return err
 	}
 
 	ms.ShortToLongLinksMap[link.Short] = link.Long
 
 	ms.LongToShortLinksMap[link.Long] = link.Short
 
-	return true, nil
+	return nil
+}
+
+func (ms *MemoryStorage) StoreLinks(links []dto.Link) error {
+	var ers error
+	for _, link := range links {
+		err := ms.StoreLink(link)
+		if err != nil {
+			ers = errors.Join(err)
+		}
+	}
+
+	if ers != nil {
+		return ers
+	}
+
+	return nil
 }
 
 func (ms *MemoryStorage) Close() error {
@@ -88,7 +113,7 @@ func (ms *MemoryStorage) Recovering() error {
 			return err
 		}
 
-		_, err = ms.StoreLink(*link)
+		err = ms.StoreLink(*link)
 		if err != nil {
 			return err
 		}

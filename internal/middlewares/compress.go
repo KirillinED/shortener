@@ -76,7 +76,7 @@ func (cw *compressWriter) Write(b []byte) (int, error) {
 }
 
 func (cw *compressWriter) WriteHeader(statusCode int) {
-	if statusCode < 300 {
+	if statusCode != 300 {
 		cw.w.Header().Set("Content-Encoding", cw.encoding)
 	}
 
