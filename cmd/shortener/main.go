@@ -41,6 +41,8 @@ func run(app *foundation.App) error {
 
 	r.Post("/api/shorten", handlers.CreateShortLinkHandler(app))
 
+	r.Post("/api/shorten/batch", handlers.BatchCreateLinksHandler(app))
+
 	r.Get("/{link}", handlers.GetShortLinkHandler(app))
 
 	fmt.Println("Listening on " + app.Cfg.Address.String())

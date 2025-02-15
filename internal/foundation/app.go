@@ -2,6 +2,7 @@ package foundation
 
 import (
 	"github.com/KirillinED/shortener/internal/config"
+	"github.com/KirillinED/shortener/internal/services"
 	"github.com/KirillinED/shortener/internal/storage"
 	"github.com/KirillinED/shortener/internal/storage/interfaces"
 	"go.uber.org/zap"
@@ -14,12 +15,14 @@ type Application interface {
 	GetConfig() *config.Config
 	GetLogger() *zap.Logger
 	GetStorage() interfaces.Storage
+	GetShortenerService() *services.ShortenerService
 }
 
 type App struct {
-	Cfg     *config.Config
-	Logger  *zap.Logger
-	Storage interfaces.Storage
+	Cfg              *config.Config
+	Logger           *zap.Logger
+	Storage          interfaces.Storage
+	ShortenerService *services.ShortenerService
 }
 
 func NewApp() *App {
@@ -57,6 +60,8 @@ func (app *App) Bootstrap() {
 	}
 
 	app.Storage = s
+
+	app.ShortenerService = services.NewShortenerService(app.Cfg, s)
 }
 
 func (app *App) Shutdown() error {
@@ -83,4 +88,8 @@ func (app *App) GetStorage() interfaces.Storage {
 
 func (app *App) GetLogger() *zap.Logger {
 	return app.Logger
+}
+
+func (app *App) GetShortenerService() *services.ShortenerService {
+	return app.ShortenerService
 }

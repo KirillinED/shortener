@@ -8,6 +8,7 @@ import (
 	reflect "reflect"
 
 	config "github.com/KirillinED/shortener/internal/config"
+	services "github.com/KirillinED/shortener/internal/services"
 	interfaces "github.com/KirillinED/shortener/internal/storage/interfaces"
 	gomock "github.com/golang/mock/gomock"
 	zap "go.uber.org/zap"
@@ -74,6 +75,20 @@ func (m *MockApplication) GetLogger() *zap.Logger {
 func (mr *MockApplicationMockRecorder) GetLogger() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetLogger", reflect.TypeOf((*MockApplication)(nil).GetLogger))
+}
+
+// GetShortenerService mocks base method.
+func (m *MockApplication) GetShortenerService() *services.ShortenerService {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetShortenerService")
+	ret0, _ := ret[0].(*services.ShortenerService)
+	return ret0
+}
+
+// GetShortenerService indicates an expected call of GetShortenerService.
+func (mr *MockApplicationMockRecorder) GetShortenerService() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetShortenerService", reflect.TypeOf((*MockApplication)(nil).GetShortenerService))
 }
 
 // GetStorage mocks base method.

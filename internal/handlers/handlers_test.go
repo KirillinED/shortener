@@ -6,6 +6,7 @@ import (
 	"github.com/KirillinED/shortener/internal/dto"
 	"github.com/KirillinED/shortener/internal/foundation"
 	foundation2 "github.com/KirillinED/shortener/internal/mocks/foundation"
+	"github.com/KirillinED/shortener/internal/services"
 	"github.com/KirillinED/shortener/internal/storage"
 	"github.com/go-chi/chi/v5"
 	"github.com/golang/mock/gomock"
@@ -14,8 +15,10 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"testing"
+	"time"
 )
 
 type request struct {
@@ -27,11 +30,14 @@ type request struct {
 func TestCreateShortLinkHandler(t *testing.T) {
 	ctrl := gomock.NewController(t)
 
+	cfg := config.DefaultConfig()
+	cfg.FileStoragePath = "./tmp." + time.Now().Format("01022006150405") + ".db.json"
+
 	app := foundation2.NewMockApplication(ctrl)
 	app.
 		EXPECT().
 		GetConfig().
-		Return(config.DefaultConfig()).
+		Return(cfg).
 		AnyTimes()
 
 	memStore, err := storage.NewMemoryStorage(app.GetConfig())
@@ -43,12 +49,22 @@ func TestCreateShortLinkHandler(t *testing.T) {
 		Return(memStore).
 		AnyTimes()
 
+	app.
+		EXPECT().
+		GetShortenerService().
+		Return(services.NewShortenerService(app.GetConfig(), app.GetStorage())).
+		AnyTimes()
+
 	app.EXPECT().
 		Shutdown().
 		Do(func() {
 			app.GetStorage().Close()
 		})
-	defer app.Shutdown()
+
+	defer func() {
+		app.Shutdown()
+		os.Remove(app.GetConfig().FileStoragePath)
+	}()
 
 	type want struct {
 		expectedStatusCode int
@@ -65,17 +81,17 @@ func TestCreateShortLinkHandler(t *testing.T) {
 		{
 			name:    "positive test #1",
 			request: request{method: http.MethodPost, target: "/", body: strings.NewReader(`{"url":"https://google.com"}`)},
-			want:    want{expectedStatusCode: http.StatusCreated, expectedBody: fmt.Sprintf(`{"result":"%s/1Frbb7"}`, baseUrl[:len(baseUrl)-1])},
+			want:    want{expectedStatusCode: http.StatusCreated, expectedBody: fmt.Sprintf(`{"result":"%s/1Frbb7"}`+"\n", baseUrl[:len(baseUrl)-1])},
 		},
 		{
 			name:    "long value positive test #2",
 			request: request{method: http.MethodPost, target: "/", body: strings.NewReader(`{"url":"https://example.com/terSchema/?year=2024&flows=true&zoom=8&center=55.96608422809726,41.59973144531251&layers=gs,trade,transport-infrastructure,educational,household,catering,culture,admin_building,other,no_type,construction,set,uk,apartmentBuildings,ind"}`)},
-			want:    want{expectedStatusCode: http.StatusCreated, expectedBody: fmt.Sprintf(`{"result":"%s/3LyLZS"}`, baseUrl[:len(baseUrl)-1])},
+			want:    want{expectedStatusCode: http.StatusCreated, expectedBody: fmt.Sprintf(`{"result":"%s/3LyLZS"}`+"\n", baseUrl[:len(baseUrl)-1])},
 		},
 		{
 			name:    "zero body negative test #3",
 			request: request{method: http.MethodPost, target: "/", body: nil},
-			want:    want{expectedStatusCode: http.StatusBadRequest, expectedBody: "body cannot be empty\n"},
+			want:    want{expectedStatusCode: http.StatusBadRequest, expectedBody: io.EOF.Error() + "\n"},
 		},
 	}
 
@@ -95,11 +111,14 @@ func TestCreateShortLinkHandler(t *testing.T) {
 func TestGetShortLinkHandler(t *testing.T) {
 	ctrl := gomock.NewController(t)
 
+	cfg := config.DefaultConfig()
+	cfg.FileStoragePath = "./tmp." + time.Now().Format("01022006150405") + ".db.json"
+
 	app := foundation2.NewMockApplication(ctrl)
 	app.
 		EXPECT().
 		GetConfig().
-		Return(config.DefaultConfig()).
+		Return(cfg).
 		AnyTimes()
 
 	memStore, err := storage.NewMemoryStorage(app.GetConfig())
@@ -111,12 +130,21 @@ func TestGetShortLinkHandler(t *testing.T) {
 		Return(memStore).
 		AnyTimes()
 
+	app.
+		EXPECT().
+		GetShortenerService().
+		Return(services.NewShortenerService(app.GetConfig(), app.GetStorage())).
+		AnyTimes()
+
 	app.EXPECT().
 		Shutdown().
 		Do(func() {
 			app.GetStorage().Close()
 		})
-	defer app.Shutdown()
+	defer func() {
+		app.Shutdown()
+		os.Remove(app.GetConfig().FileStoragePath)
+	}()
 
 	type want struct {
 		expectedStatusCode     int
@@ -135,7 +163,7 @@ func TestGetShortLinkHandler(t *testing.T) {
 	}
 
 	for _, link := range links {
-		_, err := app.GetStorage().StoreLink(link)
+		err = app.GetStorage().StoreLink(link)
 		require.NoError(t, err)
 	}
 

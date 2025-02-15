@@ -2,8 +2,12 @@ package db
 
 import (
 	"context"
+	"errors"
 	"github.com/KirillinED/shortener/internal/config"
 	"github.com/KirillinED/shortener/internal/dto"
+	storageErrors "github.com/KirillinED/shortener/internal/storage/errors"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 	_ "github.com/jackc/pgx/v5/stdlib"
 )
@@ -11,6 +15,10 @@ import (
 type PostgresStorage struct {
 	Pool *pgxpool.Pool
 }
+
+const (
+	UniqueViolation = "23505"
+)
 
 func NewPostgresStorage(cfg *config.Config) (*PostgresStorage, error) {
 	poolCfg, err := pgxpool.ParseConfig(cfg.DatabaseDSN)
@@ -26,7 +34,7 @@ func NewPostgresStorage(cfg *config.Config) (*PostgresStorage, error) {
 	return &PostgresStorage{Pool: pool}, nil
 }
 
-func (ps *PostgresStorage) ShortExists(url string) (bool, error) {
+func (ps *PostgresStorage) shortExists(url string) (bool, error) {
 	ctx := context.Background()
 
 	r := ps.Pool.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM urls WHERE long = $1)`, url)
@@ -41,7 +49,7 @@ func (ps *PostgresStorage) ShortExists(url string) (bool, error) {
 	return res, nil
 }
 
-func (ps *PostgresStorage) LongExists(url string) (bool, error) {
+func (ps *PostgresStorage) longExists(url string) (bool, error) {
 	ctx := context.Background()
 
 	r := ps.Pool.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM urls WHERE long = $1)`, url)
@@ -77,7 +85,6 @@ func (ps *PostgresStorage) GetLongURL(url string) (string, error) {
 	r := ps.Pool.QueryRow(ctx, `SELECT long FROM urls WHERE short = $1`, url)
 
 	var res string
-
 	err := r.Scan(&res)
 	if err != nil {
 		return "", err
@@ -86,18 +93,48 @@ func (ps *PostgresStorage) GetLongURL(url string) (string, error) {
 	return res, nil
 }
 
-func (ps *PostgresStorage) StoreLink(link dto.Link) (bool, error) {
+func (ps *PostgresStorage) StoreLink(link dto.Link) error {
 	ctx := context.Background()
 
-	c, err := ps.Pool.Exec(ctx, `INSERT INTO urls (short, long) VALUES ($1, $2)`, link.Short, link.Long)
+	_, err := ps.Pool.Exec(ctx, `INSERT INTO urls (short, long) VALUES ($1, $2)`, link.Short, link.Long)
 	if err != nil {
-		return false, err
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && isDuplicateViolationError(pgErr) {
+			return &storageErrors.DuplicateError{}
+		}
+
+		return err
 	}
 
-	return c.Insert(), nil
+	return nil
+}
+
+func (ps *PostgresStorage) StoreLinks(links []dto.Link) error {
+	batch := pgx.Batch{QueuedQueries: make([]*pgx.QueuedQuery, 0)}
+
+	for _, link := range links {
+		batch.Queue(`INSERT INTO urls (short, long) VALUES ($1, $2)`, link.Short, link.Long)
+	}
+
+	res := ps.Pool.SendBatch(context.Background(), &batch)
+	err := res.Close()
+	if err != nil {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && isDuplicateViolationError(pgErr) {
+			return &storageErrors.DuplicateError{}
+		}
+
+		return err
+	}
+
+	return nil
 }
 
 func (ps *PostgresStorage) Close() error {
 	ps.Pool.Close()
 	return nil
+}
+
+func isDuplicateViolationError(err *pgconn.PgError) bool {
+	return err.Code == UniqueViolation
 }

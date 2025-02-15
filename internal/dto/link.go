@@ -1,6 +1,7 @@
 package dto
 
 type Link struct {
-	Short string `json:"short"`
-	Long  string `json:"long"`
+	CorrelationID string `json:"-"`
+	Short         string `json:"short"`
+	Long          string `json:"long"`
 }
