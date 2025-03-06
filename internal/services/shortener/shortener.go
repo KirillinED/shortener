@@ -1,9 +1,9 @@
-package services
+package shortener
 
 import (
 	"errors"
 	"github.com/KirillinED/shortener/internal/config"
-	"github.com/KirillinED/shortener/internal/dto"
+	"github.com/KirillinED/shortener/internal/entities"
 	storageErrors "github.com/KirillinED/shortener/internal/storage/errors"
 	"github.com/KirillinED/shortener/internal/storage/interfaces"
 	"github.com/KirillinED/shortener/internal/utils"
@@ -19,7 +19,7 @@ func NewShortenerService(cfg *config.Config, storage interfaces.Storage) *Shorte
 }
 
 func (s *ShortenerService) CreateShortLink(longUrl string) (string, error) {
-	link := dto.Link{Long: longUrl, Short: utils.ShortURL(longUrl)}
+	link := entities.Link{Long: longUrl, Short: utils.ShortURL(longUrl)}
 
 	err := s.storage.StoreLink(link)
 	if err != nil {
@@ -51,9 +51,9 @@ func (s *ShortenerService) CreateShortLinks(longUrls []struct {
 	CorrelationID string `json:"correlation_id"`
 	OriginalURL   string `json:"original_url"`
 }) ([]CreateShortLinksResult, error) {
-	var links []dto.Link
+	var links []entities.Link
 	for _, item := range longUrls {
-		links = append(links, dto.Link{
+		links = append(links, entities.Link{
 			CorrelationID: item.CorrelationID,
 			Long:          item.OriginalURL,
 			Short:         utils.ShortURL(item.OriginalURL),

@@ -1,12 +1,13 @@
-package handlers
+package links
 
 import (
 	"fmt"
+	"github.com/KirillinED/shortener/internal/app"
 	"github.com/KirillinED/shortener/internal/config"
-	"github.com/KirillinED/shortener/internal/dto"
-	"github.com/KirillinED/shortener/internal/foundation"
+	"github.com/KirillinED/shortener/internal/entities"
+	"github.com/KirillinED/shortener/internal/handlers"
 	foundation2 "github.com/KirillinED/shortener/internal/mocks/foundation"
-	"github.com/KirillinED/shortener/internal/services"
+	"github.com/KirillinED/shortener/internal/services/shortener"
 	"github.com/KirillinED/shortener/internal/storage"
 	"github.com/go-chi/chi/v5"
 	"github.com/golang/mock/gomock"
@@ -52,7 +53,7 @@ func TestCreateShortLinkHandler(t *testing.T) {
 	app.
 		EXPECT().
 		GetShortenerService().
-		Return(services.NewShortenerService(app.GetConfig(), app.GetStorage())).
+		Return(shortener.NewShortenerService(app.GetConfig(), app.GetStorage())).
 		AnyTimes()
 
 	app.EXPECT().
@@ -133,7 +134,7 @@ func TestGetShortLinkHandler(t *testing.T) {
 	app.
 		EXPECT().
 		GetShortenerService().
-		Return(services.NewShortenerService(app.GetConfig(), app.GetStorage())).
+		Return(shortener.NewShortenerService(app.GetConfig(), app.GetStorage())).
 		AnyTimes()
 
 	app.EXPECT().
@@ -151,7 +152,7 @@ func TestGetShortLinkHandler(t *testing.T) {
 		expectedHeaderLocation string
 	}
 
-	links := []dto.Link{
+	links := []entities.Link{
 		{
 			Long:  "https://yandex.ru/",
 			Short: "43BydK",
@@ -210,9 +211,9 @@ func TestGetShortLinkHandler(t *testing.T) {
 	}
 }
 
-func getShortLinkHandlerRouter(app foundation.Application) *chi.Mux {
+func getShortLinkHandlerRouter(app app.Application) *chi.Mux {
 	r := chi.NewRouter()
 
-	r.Get("/{link}", GetShortLinkHandler(app))
+	r.Get("/{link}", handlers.GetShortLinkHandler(app))
 	return r
 }

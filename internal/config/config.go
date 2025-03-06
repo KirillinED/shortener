@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"github.com/KirillinED/shortener/internal/utils"
 	"strconv"
 	"strings"
 )
@@ -18,11 +19,13 @@ type Config struct {
 	FileStoragePath string `env:"FILE_STORAGE_PATH"`
 	DatabaseDSN     string `env:"DATABASE_DSN"`
 	DatabaseDriver  string `env:"DATABASE_DRIVER"`
+	CookieHashKey   string `env:"COOKIE_HASH_KEY"`
 }
 
 func NewConfig() *Config {
 	cfg := &Config{}
 
+	SetDefault(cfg)
 	cfg.Init()
 
 	return cfg
@@ -47,6 +50,7 @@ func SetDefault(c *Config) {
 	c.Address.Port = DefaultPort
 	c.BaseURL = "http://" + c.Address.Host + ":" + strconv.Itoa(c.Address.Port) + "/"
 	c.FileStoragePath = DefaultFileStoragePath
+	c.CookieHashKey = utils.GenerateHashKey()
 }
 
 type Address struct {

@@ -3,7 +3,7 @@ package storage
 import (
 	"bufio"
 	"encoding/json"
-	"github.com/KirillinED/shortener/internal/dto"
+	"github.com/KirillinED/shortener/internal/entities"
 	"os"
 )
 
@@ -44,8 +44,8 @@ func (f *FileStorage) Close() error {
 	return f.file.Close()
 }
 
-func (f *FileStorage) ReadLink() (*dto.Link, error) {
-	link := &dto.Link{}
+func (f *FileStorage) ReadLink() (*entities.Link, error) {
+	link := &entities.Link{}
 	err := f.decoder.Decode(link)
 	if err != nil {
 		return nil, err

@@ -3,7 +3,7 @@ package storage
 import (
 	"errors"
 	"github.com/KirillinED/shortener/internal/config"
-	"github.com/KirillinED/shortener/internal/dto"
+	"github.com/KirillinED/shortener/internal/entities"
 	storageErrors "github.com/KirillinED/shortener/internal/storage/errors"
 	"io"
 )
@@ -57,7 +57,7 @@ func (ms *MemoryStorage) GetLongURL(shortURL string) (string, error) {
 	return "", nil
 }
 
-func (ms *MemoryStorage) StoreLink(link dto.Link) error {
+func (ms *MemoryStorage) StoreLink(link entities.Link) error {
 	if _, ok := ms.ShortToLongLinksMap[link.Short]; ok {
 		return &storageErrors.DuplicateError{}
 	}
@@ -78,7 +78,7 @@ func (ms *MemoryStorage) StoreLink(link dto.Link) error {
 	return nil
 }
 
-func (ms *MemoryStorage) StoreLinks(links []dto.Link) error {
+func (ms *MemoryStorage) StoreLinks(links []entities.Link) error {
 	var ers error
 	for _, link := range links {
 		err := ms.StoreLink(link)
@@ -95,12 +95,7 @@ func (ms *MemoryStorage) StoreLinks(links []dto.Link) error {
 }
 
 func (ms *MemoryStorage) Close() error {
-	err := ms.FileStorage.Close()
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return ms.FileStorage.Close()
 }
 
 func (ms *MemoryStorage) Recovering() error {

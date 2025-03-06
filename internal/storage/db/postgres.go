@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"github.com/KirillinED/shortener/internal/config"
-	"github.com/KirillinED/shortener/internal/dto"
+	"github.com/KirillinED/shortener/internal/entities"
 	storageErrors "github.com/KirillinED/shortener/internal/storage/errors"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -93,7 +93,7 @@ func (ps *PostgresStorage) GetLongURL(url string) (string, error) {
 	return res, nil
 }
 
-func (ps *PostgresStorage) StoreLink(link dto.Link) error {
+func (ps *PostgresStorage) StoreLink(link entities.Link) error {
 	ctx := context.Background()
 
 	_, err := ps.Pool.Exec(ctx, `INSERT INTO urls (short, long) VALUES ($1, $2)`, link.Short, link.Long)
@@ -109,7 +109,7 @@ func (ps *PostgresStorage) StoreLink(link dto.Link) error {
 	return nil
 }
 
-func (ps *PostgresStorage) StoreLinks(links []dto.Link) error {
+func (ps *PostgresStorage) StoreLinks(links []entities.Link) error {
 	batch := pgx.Batch{QueuedQueries: make([]*pgx.QueuedQuery, 0)}
 
 	for _, link := range links {
@@ -128,6 +128,26 @@ func (ps *PostgresStorage) StoreLinks(links []dto.Link) error {
 	}
 
 	return nil
+}
+
+func (ps *PostgresStorage) getUserLinks(id string) ([]entities.Link, error) {
+	rows, err := ps.Pool.Query(
+		context.Background(),
+		`SELECT * FROM urls WHERE user_id = $1`,
+		id,
+	)
+
+	if err != nil {
+		return nil, err
+	}
+
+	var links []entities.Link
+	err = rows.Scan(&links)
+	if err != nil {
+		return nil, err
+	}
+
+	return links, err
 }
 
 func (ps *PostgresStorage) Close() error {

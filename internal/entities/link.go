@@ -1,4 +1,4 @@
-package dto
+package entities
 
 type Link struct {
 	CorrelationID string `json:"-"`

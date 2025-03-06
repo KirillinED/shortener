@@ -5,7 +5,7 @@ import (
 	"compress/flate"
 	"compress/gzip"
 	"fmt"
-	"github.com/KirillinED/shortener/internal/foundation"
+	"github.com/KirillinED/shortener/internal/app"
 	"github.com/KirillinED/shortener/internal/handlers"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -96,7 +96,7 @@ func TestNewCompressReader(t *testing.T) {
 }
 
 func TestCompressMiddleware(t *testing.T) {
-	app := foundation.NewApp()
+	app := app.NewApp()
 
 	baseUrl := app.Cfg.BaseURL
 

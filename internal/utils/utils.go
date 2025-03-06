@@ -1,7 +1,12 @@
 package utils
 
 import (
+	"crypto/rand"
+	"encoding/binary"
+	"encoding/hex"
+	"fmt"
 	"hash/crc32"
+	"time"
 )
 
 func ShortURL(url string) string {
@@ -19,4 +24,24 @@ func Base62Encode(num uint32) string {
 		num /= 62
 	}
 	return result
+}
+
+func GenerateUserId() (string, error) {
+	b := make([]byte, 8)
+	_, err := rand.Read(b)
+	if err != nil {
+		return "", err
+	}
+
+	return fmt.Sprintf("%x-%x", time.Now().UnixNano(), binary.BigEndian.Uint64(b)), nil
+}
+
+func GenerateHashKey() string {
+	b := make([]byte, 16)
+	_, err := rand.Read(b)
+	if err != nil {
+		panic(err)
+	}
+
+	return hex.EncodeToString(b)
 }

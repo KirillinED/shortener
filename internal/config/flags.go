@@ -11,6 +11,6 @@ func ParseFlags(c *Config) {
 	flag.StringVar(&c.FileStoragePath, "f", DefaultFileStoragePath, "Storage file path")
 	flag.StringVar(&c.DatabaseDSN, "dsn", "", "Database DSN")
 	flag.StringVar(&c.DatabaseDriver, "d", "", "Database driver")
-
+	flag.StringVar(&c.CookieHashKey, "cookie-hash-key", "", "Cookie hash key")
 	flag.Parse()
 }
